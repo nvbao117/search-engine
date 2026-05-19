@@ -1,0 +1,47 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: vn-news-opensearch
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+  api:
+    build:
+      context: ./apps/api
+    container_name: vn-news-api
+    depends_on:
+      - opensearch
+    env_file:
+      - .env.example
+    environment:
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_USERNAME: ""
+      OPENSEARCH_PASSWORD: ""
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api/app:/app/app
+      - ./logs:/app/logs
+
+  web:
+    build:
+      context: ./apps/web
+    container_name: vn-news-web
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+
+volumes:
+  opensearch-data:
